@@ -2,11 +2,14 @@ import "./charInfo.scss";
 import Marvelservice from "../../services/MarvelService";
 import { useState, useEffect } from "react";
 import Skeleton from "../skeleton/Skeleton";
+import Spinner from "../spinner/Spinner";
+import ErrorMessage from "../errorMessage/errorMessage";
 
 const CharInfo = (props) => {
   const { getCharacterId } = Marvelservice();
   const [char, setChar] = useState("");
-  console.log(char);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(false)
 
   useEffect(() => {
     updateChar();
@@ -14,14 +17,29 @@ const CharInfo = (props) => {
   }, [props.itemId]);
 
   const updateChar = () => {
-    if (props.itemId == null) {
+    if (!props.itemId) {
       return;
     }
-    getCharacterId(props.itemId).then(onCharLoaded);
+    setLoading(true)
+    getCharacterId(props.itemId).then(onCharLoaded).catch(onError);
   };
 
   const onCharLoaded = (res) => {
+    setLoading(false)
     setChar(res);
+  };
+
+  const onError = () => {
+    setLoading(false);
+    setError(true);
+    setTimeout(() => {
+      clearError();
+    }, 3000);
+  };
+
+  const clearError = () => {
+    updateChar();
+    setError(false);
   };
 
   const renderChar = () => {
@@ -42,38 +60,29 @@ const CharInfo = (props) => {
           </div>
         </div>
         <div className="char__descr">{char.description}</div>
+        <div className="char__comics">Comics:</div>
+        <ul className="char__comics-list">
+          {char.comics && char.comics.length > 0 ? null : 'There is no comics with this character'}
+        
+          {!char
+            ? null
+            : char.comics.map((item, i) => {
+                // eslint-disable-next-line array-callback-return
+                if (i > 9) return;
+              return <li className="char__comics-item" key={i}>{item.name}</li>;
+              })}
+        </ul>
       </>
     );
   };
 
   const charInfo = renderChar();
-  const content = char === "" ? <Skeleton /> : charInfo;
-  return (
-    <div className="char__info">
-      {content}
-      <div className="char__comics">Comics:</div>
-      <ul className="char__comics-list">
-        <li className="char__comics-item">
-          All-Winners Squad: Band of Heroes (2011) #3
-        </li>
-        <li className="char__comics-item">Alpha Flight (1983) #50</li>
-        <li className="char__comics-item">Amazing Spider-Man (1999) #503</li>
-        <li className="char__comics-item">Amazing Spider-Man (1999) #504</li>
-        <li className="char__comics-item">
-          AMAZING SPIDER-MAN VOL. 7: BOOK OF EZEKIEL TPB (Trade Paperback)
-        </li>
-        <li className="char__comics-item">
-          Amazing-Spider-Man: Worldwide Vol. 8 (Trade Paperback)
-        </li>
-        <li className="char__comics-item">
-          Asgardians Of The Galaxy Vol. 2: War Of The Realms (Trade Paperback)
-        </li>
-        <li className="char__comics-item">Vengeance (2011) #4</li>
-        <li className="char__comics-item">Avengers (1963) #1</li>
-        <li className="char__comics-item">Avengers (1996) #1</li>
-      </ul>
-    </div>
-  );
+  const spinner = loading && !error ? <Spinner/> : null
+  const skeleton = char === "" && !spinner && !error ? <Skeleton /> : null;
+  const content = !loading && !skeleton && !error ? charInfo : null
+  const errorMessage = error ? <ErrorMessage/> : null
+
+  return <div className="char__info">{skeleton}{content}{spinner}{ errorMessage}</div>;
 };
 
 export default CharInfo;
