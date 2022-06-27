@@ -2,49 +2,68 @@ import "./charList.scss";
 import Spinner from "../spinner/Spinner";
 import Marvelservice from "../../services/MarvelService";
 import ErrorMessage from "../errorMessage/errorMessage";
-import { useEffect, useState } from "react";
+import { useEffect, useState,useRef } from "react";
 
 const CharList = (props) => {
-  const { getAllcharacters } = Marvelservice();
+  const {getAllcharacters,loading,error } = Marvelservice();
   const [charList, setCharList] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(false);
-
+  const [offset, setOffset] = useState(210)
+  const [newItemsLoading, setNewItemsLoading] = useState(false)
+  const [ended,setEnded] = useState(false)
+//Запит на сервер і отримання 9-ти персонажів по offset, initial - выдповыдаэ за ініціалізацію первинного завантаження
+  const request = (offset, initial) => {
+    initial ? setNewItemsLoading(false) : setNewItemsLoading(true)
+      getAllcharacters(offset).then(onCharListLoaded).catch(onError);
+  };
+//Завантаження першої сторінки персонажів  
   useEffect(() => {
-    updateCharList();
+    request(offset,true);
     // eslint-disable-next-line
   }, []);
-
-  const updateCharList = () => {
-    setLoading(true);
-    getAllcharacters().then(onCharListLoaded).catch(onError);
+   
+  const onCharListLoaded = (newItems) => {
+    setCharList(charList=>[...charList,...newItems]); // Записуємо персонажів в стейт, при завантаженні нових дозаписуємо в кінець масиву
+    setOffset(offset => offset + 9) // перезаписуємо значення offset при завантаженні 
+    setNewItemsLoading(false)
+    if (newItems.length < 9) { 
+      setEnded(true)
+    }
   };
 
-  const onCharListLoaded = (charList) => {
-    setCharList(charList);
-    setLoading(false);
-  };
-
+  
   const onError = () => {
-    setLoading(false);
-    setError(true);
+    
     setTimeout(() => {
       clearError();
     }, 3000);
   };
 
   const clearError = () => {
-    updateCharList();
-    setError(false);
+    request();
+    
   };
 
+  const itemRefs = useRef([]);
+
+    const focusOnItem = (id) => {
+       
+        itemRefs.current.forEach(item => item.classList.remove('char__item_selected'));
+        itemRefs.current[id].classList.add('char__item_selected');
+        itemRefs.current[id].focus();
+    }
+
   const charGrid = (arr) => {
-    const items = arr.map((item) => {
+    const items = arr.map((item,i) => {
+      
       return (
         <li
           key={item.id}
           className="char__item"
-          onClick={() => props.itemChoise(item.id)}
+          ref={el => itemRefs.current[i] = el}
+          onClick={() => {
+            props.itemChoise(item.id)
+            focusOnItem(i)
+          }}
         >
           <img src={item.thumbnail} alt={item.name} />
           <div className="char__name">{item.name}</div>
@@ -56,16 +75,20 @@ const CharList = (props) => {
 
   const view = charGrid(charList);
 
-  const content = !(loading || error) ? view : null;
-  const spinner = loading ? <Spinner /> : null;
+  const spinner = loading && !newItemsLoading ? <Spinner /> : null;
   const errorMessage = error ? <ErrorMessage /> : null;
 
   return (
     <div className="char__list">
-      {content}
+      {view}
       {errorMessage}
       {spinner}
-      <button className="button button__main button__long">
+      <button
+        className="button button__main button__long"
+        onClick={() => request(offset)}
+        disabled={newItemsLoading}
+        style={{'display': ended ? 'none' : 'block'}}
+        >
         <div className="inner">load more</div>
       </button>
     </div>

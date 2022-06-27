@@ -6,12 +6,9 @@ import ErrorMessage from "../errorMessage/errorMessage";
 import { useState, useEffect } from "react";
 
 const RandomChar = () => {
-  const { getCharacterId } = Marvelservice();
-
+  const { getCharacterId,loading,error } = Marvelservice();
   const [char, setChar] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
-
+  
   useEffect(() => {
     updateChar();
     // eslint-disable-next-line
@@ -19,18 +16,14 @@ const RandomChar = () => {
 
   const updateChar = () => {
     const id = Math.floor(Math.random() * (1011400 - 1011000) + 1011000);
-    setLoading(true);
     getCharacterId(id).then(onCharLoaded).catch(onError);
   };
 
   const onCharLoaded = (char) => {
     setChar(char);
-    setLoading(false);
   };
 
-  const onError = () => {
-    setLoading(false);
-    setError(true);
+  const onError = () => { 
     setTimeout(() => {
       clearError();
     }, 3000);
@@ -38,7 +31,6 @@ const RandomChar = () => {
 
   const clearError = () => {
     updateChar();
-    setError(false);
   };
 
   const View = () => {
